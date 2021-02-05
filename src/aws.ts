@@ -9,7 +9,14 @@ if (c.aws_profile !== 'DEPLOYED') {
   AWS.config.credentials = credentials;
 }
 
-//initialize S3 access
+/**Initialize S3 service in app
+ *  @Params
+ *    Object:
+ *        signatureVersion-string: The signature version to sign requests with 
+ *            possible values: 'v2'|'v3'|'v4'
+ *        region-string: aws-region
+ *        params: {Bucket -string: S3 bucket name}
+*/
 export const s3: AWS.S3 = new AWS.S3({
   signatureVersion: 'v4',
   region: c.aws_region,
@@ -29,7 +36,6 @@ export function getGetSignedUrl( key: string ): string{
         Key: key,
         Expires: signedUrlExpireSeconds
       });
-
     return url;
 }
 
@@ -45,6 +51,5 @@ export function getPutSignedUrl( key: string ){
       Key: key,
       Expires: signedUrlExpireSeconds
     });
-
     return url;
 }

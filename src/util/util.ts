@@ -1,5 +1,9 @@
 import fs from 'fs';
 import Jimp = require('jimp');
+import axios, { AxiosResponse } from 'axios';
+import { getPutSignedUrl } from '../aws';
+
+const readFile = require('util').promisify(fs.readFile)
 
 // filterImageFromURL
 // helper function to download, filter, and save the filtered image locally
@@ -26,6 +30,19 @@ export async function filterImageFromURL(inputURL: string): Promise<string>{
     });
 }
 
+// filterImageAndSaveS3
+// helper function to download, filter, and save image to S3 bucket
+export async function filterImageAndSaveS3 (imageUrl: string) : Promise<string> {
+    return new Promise (async (resolve, reject) => {
+        try {
+            const photo: Jimp = await Jimp.read(imageUrl);
+
+        } catch (error) {
+
+        }
+    });
+}
+
 // deleteLocalFiles
 // helper function to delete files on the local disk
 // useful to cleanup after tasks
@@ -45,4 +62,23 @@ export function validURL(myURL: string) {
     '(\\?[;&amp;a-z\\d%_.~+=-]*)?'+ // query string
     '(\\#[-a-z\\d_]*)?$','i');
     return pattern.test(myURL);
+ }
+
+ export async function uploadToS3 (fileName: string, path: string) {
+     return new Promise<AxiosResponse>(async (resolve, reject) => {
+        try {
+            const preSignedPutUrl: string = getPutSignedUrl(fileName);
+            const file = await readFile(path)
+            const response: AxiosResponse = await axios.put(preSignedPutUrl, {
+                data:file
+            },  {
+                headers: {
+                  'Content-Type': 'application/octet-stream'
+                }
+            });
+            resolve(response)
+         } catch (error) {
+            reject(error)
+         }
+     })  
  }
