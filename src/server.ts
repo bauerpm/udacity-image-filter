@@ -1,8 +1,14 @@
 import express, { Request, Response } from 'express';
 require('dotenv').config();
 import bodyParser from 'body-parser';
-import {filterImageFromURL, deleteLocalFiles, validURL, uploadToS3, downloadFromS3} from './util/util';
-import { getPutSignedUrl } from './aws';
+import {
+  filterImageFromURL,
+  deleteLocalFiles,
+  validURL,
+  uploadToS3,
+  downloadFromS3
+} from './util/util';
+
 
 (async () => {
 
@@ -56,7 +62,9 @@ import { getPutSignedUrl } from './aws';
       res.status(500).send({error, message: 'There was a problem filtering or saving your file. Make sure the url provided is valid.'})
     }
   })
-  //route to filter 
+  //route to optionally filter image and then upload to S3 bucket
+  //optional body param {filter: filter_type}
+  //  fiter_type - 'greyscale' | 'sepia'  no filter if not added
   app.post("/filteredimage/upload", async (req: Request, res: Response) => {
     const image_url  = req.query.image_url as string;
     const { filter } = req.body
@@ -72,19 +80,12 @@ import { getPutSignedUrl } from './aws';
       const filteredPath = await filterImageFromURL(image_url, filter)
       const fileName = filteredPath.slice(filteredPath.lastIndexOf('/') + 1)
       const response = await uploadToS3(fileName)
-      // deleteLocalFiles([filteredPath])
+      deleteLocalFiles([filteredPath])
       res.status(200).send(response)
     } catch (error) {
       res.status(500).send({error, message: 'There was a problem filtering or saving your file. Make sure the url provided is valid.'})
     }
   })
-
-  app.get('/signed-url/:fileName', 
-    async (req: Request, res: Response) => {
-    let { fileName } = req.params;
-    const url = getPutSignedUrl(fileName);
-    res.status(201).send({url: url});
-  });
 
   // Start the Server
   app.listen( port, () => {

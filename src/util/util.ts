@@ -1,10 +1,10 @@
 import fs from 'fs';
 import Jimp = require('jimp');
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { getGetSignedUrl, getPutSignedUrl } from '../aws';
 const os = require('os');
 const path = require('path');
-const readFile = require('util').promisify(fs.readFile)
+
 
 // filterImageFromURL
 // helper function to download, filter, and save the filtered image locally
@@ -27,8 +27,6 @@ export async function filterImageFromURL(inputURL: string, filter = 'greyscale')
             if(filter) {
                 filter === 'sepia' && await photo.sepia();
                 filter === 'greyscale' && photo.greyscale();
-            } else {
-                
             }
             photo.write(__dirname+outpath, (img)=>{
                 resolve(__dirname+outpath);
@@ -50,6 +48,11 @@ export async function deleteLocalFiles(files:Array<string>){
     }
 }
 
+//helper function to test url for validity
+//INPUT
+//  myURL - string URL to be tested
+//Returns
+// boolean
 export function validURL(myURL: string) {
     var pattern: RegExp = new RegExp('^(https?:\\/\\/)?'+ // protocol
     '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|'+ // domain name
@@ -62,7 +65,7 @@ export function validURL(myURL: string) {
 
  //uploadToS3
  //Helper function to upload local file to S3 bukcet,
- // @Params: 
+ // INPUTS
  //     fileName -string  name of local file
  //     path -string path to local file
 
@@ -70,8 +73,8 @@ export function validURL(myURL: string) {
      return new Promise(async (resolve, reject) => {
         try {
             const preSignedPutUrl: string = getPutSignedUrl(fileName);
-            const _path = path.resolve(__dirname, 'tmp', fileName)
-            const file = await readFile(_path)
+            const _path: string = path.resolve(__dirname, 'tmp', fileName)
+            const file: Buffer = await fs.promises.readFile(_path)
             const config: AxiosRequestConfig = {
                 method: 'put',
                 url: preSignedPutUrl,
@@ -95,11 +98,13 @@ export function validURL(myURL: string) {
     return new Promise<string>(async (resolve, reject) => {
      try {
         const preSignedGetUrl: string = getGetSignedUrl(fileName);
-        const response = await axios.get(preSignedGetUrl, {
+        
+        const response: AxiosResponse = await axios.get(preSignedGetUrl, {
             responseType: 'arraybuffer',
         })
-        const homePath = os.homedir();
-        const _path = path.join(homePath, 'Desktop', fileName)
+
+        const homePath: string = os.homedir();
+        const _path: string = path.join(homePath, 'Desktop', fileName)
         
         fs.writeFileSync(_path, response.data)
         resolve(`Successfully downloaded ${fileName} to the desktop`)
