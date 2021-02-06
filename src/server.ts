@@ -27,19 +27,19 @@ import {
     res.send("try GET /filteredimage?image_url={{}}")
   } );
 
+  //route to get a specific image from s3 bucket
   app.get( "/filteredimage/:file_name", async (req: Request, res: Response) => {
-    const {file_name} = req.params;
+    const { file_name } = req.params;
     try {
       if(!file_name) {
         return res.status(400).send('File name is required to download image')
       }
-      const response = await downloadFromS3(file_name)
+      const response:string = await downloadFromS3(file_name)
   
-      res.send(response)
+      res.status(200).send(response)
     } catch (error) {
-      res.send(error)
+      res.status(400).send(error)
     }
-    
   })
   
   // route to get image from public url, filter it, save to disk, then erase from disk.
@@ -59,7 +59,7 @@ import {
       deleteLocalFiles([filteredPath])
       res.status(200).send(filteredPath)
     } catch (error) {
-      res.status(500).send({error, message: 'There was a problem filtering or saving your file. Make sure the url provided is valid.'})
+      res.status(500).send({error, message: 'There was a problem filtering or saving your file. Make sure the image url provided is valid.'})
     }
   })
   //route to optionally filter image and then upload to S3 bucket
