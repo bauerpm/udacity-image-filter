@@ -1,8 +1,9 @@
 import fs from 'fs';
 import Jimp = require('jimp');
-import axios, { AxiosResponse } from 'axios';
-import { getPutSignedUrl } from '../aws';
-
+import axios, { AxiosRequestConfig } from 'axios';
+import { getGetSignedUrl, getPutSignedUrl } from '../aws';
+const os = require('os');
+const path = require('path');
 const readFile = require('util').promisify(fs.readFile)
 
 // filterImageFromURL
@@ -10,35 +11,30 @@ const readFile = require('util').promisify(fs.readFile)
 // returns the absolute path to the local image
 // INPUTS
 //    inputURL: string - a publicly accessible url to an image file
+//    filter: string(optional) "greyscale" or "sepia" defaults to greyscale
 // RETURNS
 //    an absolute path to a filtered image locally saved file
-export async function filterImageFromURL(inputURL: string): Promise<string>{
+export async function filterImageFromURL(inputURL: string, filter = 'greyscale'): Promise<string>{
     return new Promise( async (resolve, reject) => {
         try {
             const photo = await Jimp.read(inputURL);
             const outpath = '/tmp/filtered.'+Math.floor(Math.random() * 2000)+'.jpg';
-            await photo
+            photo
             .resize(256, 256) // resize
             .quality(60) // set JPEG quality
-            .greyscale() // set greyscale
-            .write(__dirname+outpath, (img)=>{
+            
+            //handle optional filters
+            if(filter) {
+                filter === 'sepia' && await photo.sepia();
+                filter === 'greyscale' && photo.greyscale();
+            } else {
+                
+            }
+            photo.write(__dirname+outpath, (img)=>{
                 resolve(__dirname+outpath);
             }); 
         } catch (error) {
             reject(error)
-        }
-    });
-}
-
-// filterImageAndSaveS3
-// helper function to download, filter, and save image to S3 bucket
-export async function filterImageAndSaveS3 (imageUrl: string) : Promise<string> {
-    return new Promise (async (resolve, reject) => {
-        try {
-            const photo: Jimp = await Jimp.read(imageUrl);
-
-        } catch (error) {
-
         }
     });
 }
@@ -64,21 +60,52 @@ export function validURL(myURL: string) {
     return pattern.test(myURL);
  }
 
- export async function uploadToS3 (fileName: string, path: string) {
-     return new Promise<AxiosResponse>(async (resolve, reject) => {
+ //uploadToS3
+ //Helper function to upload local file to S3 bukcet,
+ // @Params: 
+ //     fileName -string  name of local file
+ //     path -string path to local file
+
+ export async function uploadToS3 (fileName: string) {
+     return new Promise(async (resolve, reject) => {
         try {
             const preSignedPutUrl: string = getPutSignedUrl(fileName);
-            const file = await readFile(path)
-            const response: AxiosResponse = await axios.put(preSignedPutUrl, {
-                data:file
-            },  {
+            const _path = path.resolve(__dirname, 'tmp', fileName)
+            const file = await readFile(_path)
+            const config: AxiosRequestConfig = {
+                method: 'put',
+                url: preSignedPutUrl,
                 headers: {
-                  'Content-Type': 'application/octet-stream'
-                }
-            });
-            resolve(response)
-         } catch (error) {
+                    'Content-Type': 'image/jpeg'
+                },
+                data: file,
+            }
+            await axios(config)
+            resolve(`Successfully uploaded ${fileName} to S3 Bucket`)
+        } catch (error) {
             reject(error)
-         }
+        }
      })  
+ }
+ //downloadFromS3
+ //helper function to download a jpeg image from S3 bucket and save it to the desktop
+ // @Params 
+ //     -fileName -string name of the file in the S3 bucket to download
+ export async function downloadFromS3 (fileName: string) {
+    return new Promise<string>(async (resolve, reject) => {
+     try {
+        const preSignedGetUrl: string = getGetSignedUrl(fileName);
+        const response = await axios.get(preSignedGetUrl, {
+            responseType: 'arraybuffer',
+        })
+        const homePath = os.homedir();
+        const _path = path.join(homePath, 'Desktop', fileName)
+        
+        fs.writeFileSync(_path, response.data)
+        resolve(`Successfully downloaded ${fileName} to the desktop`)
+
+     } catch (error) {
+         reject(`There was a problem downloading ${fileName}`)
+     }
+    })
  }

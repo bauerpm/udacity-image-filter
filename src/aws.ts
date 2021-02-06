@@ -34,7 +34,7 @@ export function getGetSignedUrl( key: string ): string{
     const url: string = s3.getSignedUrl('getObject', {
         Bucket: c.aws_media_bucket,
         Key: key,
-        Expires: signedUrlExpireSeconds
+        Expires: signedUrlExpireSeconds,
       });
     return url;
 }
@@ -49,7 +49,8 @@ export function getPutSignedUrl( key: string ){
     const url = s3.getSignedUrl('putObject', {
       Bucket: c.aws_media_bucket,
       Key: key,
-      Expires: signedUrlExpireSeconds
+      Expires: signedUrlExpireSeconds,
+      ContentType: 'image/jpeg'
     });
     return url;
 }
