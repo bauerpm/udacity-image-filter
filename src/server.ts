@@ -1,12 +1,6 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import {
-  filterImageFromURL,
-  deleteLocalFiles,
-  validURL,
-  uploadToS3,
-  downloadFromS3
-} from './util/util';
+import {filterImageFromURL, deleteLocalFiles, validURL} from './util/util';
 
 (async () => {
 
@@ -44,23 +38,7 @@ import {
   app.get( "/", async ( req, res ) => {
     res.send("try GET /filteredimage?image_url={{}}")
   } );
-
-
-  //route to get a specific image from s3 bucket
-  app.get( "/filteredimage/:file_name", async (req: Request, res: Response) => {
-    const { file_name } = req.params;
-    try {
-      if(!file_name) {
-        return res.status(400).send('File name is required to download image')
-      }
-      const response:string = await downloadFromS3(file_name)
   
-      res.status(200).send(response)
-    } catch (error) {
-      res.status(400).send(error)
-    }
-  })
-
   app.get("/filteredimage", async (req: Request, res: Response) => {
     const image_url  = req.query.image_url as string;
 
@@ -76,31 +54,6 @@ import {
       const filteredPath = await filterImageFromURL(image_url)
       deleteLocalFiles([filteredPath])
       res.status(200).send(filteredPath)
-    } catch (error) {
-      res.status(500).send({error, message: 'There was a problem filtering or saving your file. Make sure the image url provided is valid.'})
-    }
-  })
-
-  //route to optionally filter image and then upload to S3 bucket
-  //optional body param {filter: filter_type}
-  //  fiter_type - 'greyscale' | 'sepia'  no filter if not added
-  app.post("/filteredimage/upload", async (req: Request, res: Response) => {
-    const image_url  = req.query.image_url as string;
-    const { filter } = req.body
-
-    if (!image_url) {
-      return res.status(400).send('request must have contain a query string ?image_url={{URL}}')
-    }
-    const isValidUrl: boolean = validURL(image_url)
-    if(!isValidUrl) {
-      return res.status(400).send('Invalid Url')
-    }
-    try {
-      const filteredPath = await filterImageFromURL(image_url, filter)
-      const fileName = filteredPath.slice(filteredPath.lastIndexOf('/') + 1)
-      const response = await uploadToS3(fileName)
-      deleteLocalFiles([filteredPath])
-      res.status(200).send(response)
     } catch (error) {
       res.status(500).send({error, message: 'There was a problem filtering or saving your file. Make sure the url provided is valid.'})
     }
